@@ -1,3 +1,6 @@
+"""
+Built-in types of BS
+"""
 from __future__ import annotations
 import binascii
 from typing import Any, Generic, TypeVar
@@ -15,7 +18,8 @@ class BSMeta:
     def __init__(self) -> None:
         self.used_constructors: dict[str, BSType] = {} # constructor_name -> type
         self.types_constructors: dict[str, list[BSType]] = {} # type_name -> list of constructors
-    
+
+    # pylint: disable-next = unused-private-member
     def __force_clear(self) -> None:
         """NEVER EVER run this method. It is required only for tests.
         """
@@ -96,7 +100,8 @@ class BSType:
     - `constructor_name` = `"user"`
     - `type_value` = `[BSParam(param_name="id", param_type=BSInt)]`
     """
-    
+
+    # pylint: disable-next = too-many-arguments
     def __init__(
         self,
         type_name: str,
@@ -116,7 +121,7 @@ class BSType:
         self.is_builtin_type = is_builtin_type
         self.is_comlex_type = is_comlex_type
         self.optional_types = optional_types
-        
+
         # if type is complex (like int | null), we don't need to emphasize a constructor name
         if not self.is_comlex_type:
             BS._register_type(self)
@@ -182,12 +187,13 @@ class BSType:
             bool: can the BSObject be created from `data`
         """
         # print(f"Validating type {self.name}")
+        # pylint: disable-next = protected-access
         if isinstance(data, BSObject) and self == data._type:
             return True
         validation_result = self._validate(data)
         # print(f"{self.name} validated: {validation_result}")
         return validation_result
-    
+
     def _validate(self, data: object) -> bool:
         """Object validation
 
@@ -197,13 +203,13 @@ class BSType:
         Returns:
             bool: can the BSObject be created from `data`
         """
-        if self.is_comlex_type:
+        if self.is_comlex_type:  # pylint: disable = no-else-return
             # complex type like int | null
             for _type in self.optional_types:
                 if _type.validate(data):
                     return True
             return False
-        else:
+        else: # pylint: disable = no-else-return
             # simple type
             for param in self.params:
                 if param.name not in data.keys():
@@ -211,7 +217,7 @@ class BSType:
                 if not param.type.validate(data[param.name]):
                     return False
             return True
-        
+
 
     def to_BS_object(self, data: object) -> BSObject:
         """Use this method to convert Python object to BSObject.
@@ -225,6 +231,7 @@ class BSType:
         Returns:
             BSObject: created object
         """
+        # pylint: disable-next = protected-access
         if isinstance(data, BSObject) and self == data._type:
             return data
         if not self.validate(data):
@@ -243,21 +250,26 @@ class BSType:
         Args:
             data (object): Python object to convert
         """
-        if self.is_comlex_type:
+        if self.is_comlex_type:  # pylint: disable = no-else-raise
             # complex type like int | null
             for _type in self.optional_types:
                 if _type.validate(data):
                     return _type.to_BS_object(data)
-            raise ValueError(f"Given object cannot be casted to any of these types: {' | '.join(self.optional_types)}")
+            raise ValueError((
+                "Given object cannot be casted to any of these types: "
+                f"{' | '.join(self.optional_types)}"
+            ))
         else:
             # simple type
             params_for_bs_object = {}
             for param in self.params:
                 if param.name not in data.keys():
-                    raise ValueError(f"Given object does not contain required parameter {param.name}")
+                    raise ValueError(
+                        f"Given object does not contain required parameter {param.name}"
+                    )
                 params_for_bs_object[param.name] = param.type.to_BS_object(data[param.name])
             return BSObject[self](self, params_for_bs_object)
-    
+
     def __or__(self, another_type: BSType) -> BSType:
         new_optional_types: set[BSType] = set()
         if self.is_comlex_type:
@@ -278,7 +290,7 @@ class BSType:
             is_comlex_type=True,
             optional_types=new_optional_types
         )
-    
+
     def __eq__(self, another_type: BSType) -> bool:
         if not isinstance(another_type, BSType):
             # print("failed 1")
@@ -321,7 +333,12 @@ class BSObject(Generic[T]):
         # )
         # if len(self.data.keys()) > 1:
         params = "\n".join(
-            [f"{' ' * (tab_size + 4)}{key}={value.__str__(tab_size + 4) if isinstance(value, BSObject) else str(value)}" for key, value in self.data.items()]
+            [
+                (
+                    f"{' ' * (tab_size + 4)}{key}="
+                    f"{value.__str__(tab_size + 4) if isinstance(value, BSObject) else str(value)}"
+                ) for key, value in self.data.items()
+            ]
         )
         if self._type._name == "null":
             return "null"
@@ -414,26 +431,3 @@ class _BSNull(BSType):
 BSInt = _BSInt()
 BSStr = _BSStr()
 BSNull = _BSNull()
-
-user_type = BSType(
-        "User", [
-            BSParam("id", BSInt),
-            BSParam("first_name", BSStr | BSNull)
-        ],
-        "user"
-    )
-
-print(user_type.convert_to_scheme())
-
-
-bot_type = BSType(
-        "User", [
-            BSParam("id", BSInt),
-            BSParam("first_name", BSStr | BSNull),
-            BSParam("bot_creator", user_type)
-        ],
-        "bot"
-    )
-
-print(bot_type.convert_to_scheme())
-print(user_type.convert_to_scheme())

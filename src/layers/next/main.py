@@ -1,7 +1,7 @@
 """
 Main module with test realization of the scheme
 """
-from core.builtins import BSType, BSParam, BSObject, BSStr, BSInt, BSNull
+from core.builtins import BSType, BSParam, BSStr, BSInt, BSNull
 user = BSType(
     "User", [
         BSParam("id", BSInt),
@@ -34,14 +34,10 @@ user_data = {
     "id": 42,
     "first_name": "Mark"
 }
-user_obj = user.to_BS_object(user_data) # NotImplementedError: Validation of this type is not implemented yet
+user_obj = user.to_BS_object(user_data)
 
 bot_obj = bot.to_BS_object({
     "id": 1,
     "first_name": None,
     "bot_creator": user_obj
 })
-
-print(bot_obj)
-
-print(BSInt | BSNull == BSNull | BSInt | BSInt)
