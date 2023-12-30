@@ -207,7 +207,7 @@ class BSType:
             # simple type
             for param in self.params:
                 if param.name not in data.keys():
-                    raise ValueError(f"Given object does not contain required parameter {param.name}")
+                    return False
                 if not param.type.validate(data[param.name]):
                     return False
             return True
