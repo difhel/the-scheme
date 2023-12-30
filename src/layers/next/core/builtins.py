@@ -185,6 +185,8 @@ class BSType:
             bool: can the BSObject be created from `data`
         """
         # print(f"Validating type {self.name}")
+        if isinstance(data, BSObject) and self == data._type:
+            return True
         validation_result = self._validate(data)
         # print(f"{self.name} validated: {validation_result}")
         return validation_result
@@ -198,8 +200,6 @@ class BSType:
         Returns:
             bool: can the BSObject be created from `data`
         """
-        if isinstance(data, BSObject) and self == data._type:
-            return True
         if self.is_comlex_type:
             # complex type like int | null
             for _type in self.optional_types:
@@ -228,6 +228,8 @@ class BSType:
         Returns:
             BSObject: created object
         """
+        if isinstance(data, BSObject) and self == data._type:
+            return data
         if not self.validate(data):
             raise ValueError((
                 f"The provided Python object can't "
@@ -247,8 +249,6 @@ class BSType:
         Raises:
             NotImplementedError: You should implement this method on your own
         """
-        if isinstance(data, BSObject) and self == data._type:
-            return data
         if self.is_comlex_type:
             # complex type like int | null
             for _type in self.optional_types:
