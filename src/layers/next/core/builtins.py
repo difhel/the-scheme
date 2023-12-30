@@ -412,7 +412,7 @@ class _BSNull(BSType):
         return self.name
 
     def _validate(self, data: object) -> bool:
-        return True # anything could be converted to null
+        return data is None
 
     def _to_BS_object(self, data: object = None) -> BSObject:
         return BSObject[self](self, {})
