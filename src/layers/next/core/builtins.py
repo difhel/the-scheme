@@ -15,6 +15,13 @@ class BSMeta:
     def __init__(self) -> None:
         self.used_constructors: dict[str, BSType] = {} # constructor_name -> type
         self.types_constructors: dict[str, list[BSType]] = {} # type_name -> list of constructors
+    
+    def __force_clear(self) -> None:
+        """NEVER EVER run this method. It is required only for tests.
+        """
+        self.used_constructors: dict[str, BSType] = {} # constructor_name -> type
+        self.types_constructors: dict[str, list[BSType]] = {} # type_name -> list of constructors
+        # raise RuntimeWarning("Cleaned.")
 
     def has_constructor(self, constructor_name: str) -> BSType | None:
         """Returns type associated with constructor by its name or None
@@ -101,7 +108,7 @@ class BSType:
         if (used_type := BS.has_constructor(constructor_name)) is not None:
             raise ValueError((
                 f"Constructor with name {constructor_name} has already been "
-                f"declared for type {used_type.name}.{used_type.constructor_name}#{used_type.hash}"
+                f"declared for type {used_type._name}.{used_type.constructor_name}#{used_type.hash}"
             ))
         self._name = type_name
         self.constructor_name = constructor_name
@@ -414,7 +421,25 @@ BSInt = _BSInt()
 BSStr = _BSStr()
 BSNull = _BSNull()
 
+user_type = BSType(
+        "User", [
+            BSParam("id", BSInt),
+            BSParam("first_name", BSStr | BSNull)
+        ],
+        "user"
+    )
 
-a = BSInt | BSNull
-b = BSNull | BSInt
-a.convert_to_scheme() == b.convert_to_scheme()
+print(user_type.convert_to_scheme())
+
+
+bot_type = BSType(
+        "User", [
+            BSParam("id", BSInt),
+            BSParam("first_name", BSStr | BSNull),
+            BSParam("bot_creator", user_type)
+        ],
+        "bot"
+    )
+
+print(bot_type.convert_to_scheme())
+print(user_type.convert_to_scheme())
