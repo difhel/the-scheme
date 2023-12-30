@@ -178,9 +178,6 @@ class BSType:
         Args:
             data (object): data
 
-        Raises:
-            NotImplementedError: You should implement this method on your own
-
         Returns:
             bool: can the BSObject be created from `data`
         """
@@ -245,9 +242,6 @@ class BSType:
 
         Args:
             data (object): Python object to convert
-
-        Raises:
-            NotImplementedError: You should implement this method on your own
         """
         if self.is_comlex_type:
             # complex type like int | null
