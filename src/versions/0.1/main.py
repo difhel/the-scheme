@@ -93,7 +93,7 @@ class BSType:
     - `constructor_name` = `"user"`
     - `type_value` = `[BSParam(param_name="id", param_type=BSInt)]`
     """
-    def __init__(self, type_name: str, type_value: list[BSParam], constructor_name: str) -> None:
+    def __init__(self, type_name: str, type_value: list[BSParam], constructor_name: str, is_builtin_type: bool = False) -> None:
         if (used_type := BS.has_constructor(constructor_name)) is not None:
             raise ValueError((
                 f"Constructor with name {constructor_name} has already been "
@@ -102,6 +102,7 @@ class BSType:
         self._name = type_name
         self.constructor_name = constructor_name
         self.params = type_value
+        self.is_builtin_type = is_builtin_type
         BS._register_type(self)
 
     @property
@@ -152,7 +153,29 @@ class BSType:
         Returns:
             bool: can the BSObject be created from `data`
         """
-        raise NotImplementedError("Validation of this type is not implemented yet")
+        # print(f"Validating type {self.name}")
+        validation_result = self._validate(data)
+        # print(f"{self.name} validated: {validation_result}")
+        return validation_result
+    
+    def _validate(self, data: object) -> bool:
+        """Object validation
+
+        Args:
+            data (object): the Python object you want to validate
+
+        Returns:
+            bool: can the BSObject be created from `data`
+        """
+        if isinstance(data, BSObject) and data._type.name == self.name:
+            return data
+        for param in self.params:
+            if param.name not in data.keys():
+                raise ValueError(f"Given object does not contain required parameter {param.name}")
+            if not param.type.validate(data[param.name]):
+                return False
+        return True
+        
 
     def to_BS_object(self, data: object) -> BSObject:
         """Use this method to convert Python object to BSObject.
@@ -185,7 +208,14 @@ class BSType:
         Raises:
             NotImplementedError: You should implement this method on your own
         """
-        raise NotImplementedError("Creating object of this type is not implemented")
+        if isinstance(data, BSObject) and data._type.name == self.name:
+            return data
+        params_for_bs_object = {}
+        for param in self.params:
+            if param.name not in data.keys():
+                raise ValueError(f"Given object does not contain required parameter {param.name}")
+            params_for_bs_object[param.name] = param.type.to_BS_object(data[param.name])
+        return BSObject[self](self, params_for_bs_object)
 
 # pylint: disable-next=too-few-public-methods
 class BSParam:
@@ -207,18 +237,18 @@ class BSObject(Generic[T]):
         self.data = data
 
 
-    def __str__(self):
+    def __str__(self, tab_size=0):
         # params = "\n".join(
         #     [f"    {param.name}={str(param.value)}" for param in self.type.params]
         # )
         # if len(self.data.keys()) > 1:
         params = "\n".join(
-            [f"    {key}={str(value)}" for key, value in self.data.items()]
+            [f"{' ' * (tab_size + 4)}{key}={value.__str__(tab_size + 4) if isinstance(value, BSObject) else str(value)}" for key, value in self.data.items()]
         )
         return (
             f"{self._type.name}(\n"
             f"{params}"
-            "\n)"
+            f"\n{' ' * tab_size})"
         )
 
 
@@ -226,6 +256,7 @@ class _BSInt(BSType):
     name = "int"
     constructor_name = "int"
     params = []
+    is_builtin_type = True
     # @override
 
     # def __init__(self, type_name: str, type_value: list[BSParam], constructor_name: str) -> None:
@@ -234,12 +265,13 @@ class _BSInt(BSType):
         super().__init__(
             type_name=self.name,
             type_value=self.params,
-            constructor_name=self.constructor_name
+            constructor_name=self.constructor_name,
+            is_builtin_type=self.is_builtin_type
         )
     def convert_to_scheme(self) -> str:
         return self.name
 
-    def validate(self, data: object) -> bool:
+    def _validate(self, data: object) -> bool:
         return isinstance(data, int)
 
     def _to_BS_object(self, data: object) -> BSObject:
@@ -251,6 +283,7 @@ class _BSStr(BSType):
     name = "str"
     constructor_name = "str"
     params = []
+    is_builtin_type = True
     # @override
 
     # def __init__(self, type_name: str, type_value: list[BSParam], constructor_name: str) -> None:
@@ -259,12 +292,13 @@ class _BSStr(BSType):
         super().__init__(
             type_name=self.name,
             type_value=self.params,
-            constructor_name=self.constructor_name
+            constructor_name=self.constructor_name,
+            is_builtin_type=self.is_builtin_type
         )
     def convert_to_scheme(self) -> str:
         return self.name
 
-    def validate(self, data: object) -> bool:
+    def _validate(self, data: object) -> bool:
         return isinstance(data, str)
 
     def _to_BS_object(self, data: object) -> BSObject:
@@ -292,14 +326,24 @@ bot = BSType(
     "bot"
 )
 
-BSInt.to_BS_object("crash!")
+# BSInt.to_BS_object("crash!")
 
 x = BSInt.to_BS_object(42)
 print(x)
 print(user.convert_to_scheme())
 print(bot.convert_to_scheme())
 
-user_obj = user.to_BS_object({
-    "id": BSInt.to_BS_object(42),
-    "first_name": BSStr.to_BS_object("Mark")
-}) # NotImplementedError: Validation of this type is not implemented yet
+
+user_data = {
+    "id": 42,
+    "first_name": "Mark"
+}
+user_obj = user.to_BS_object(user_data) # NotImplementedError: Validation of this type is not implemented yet
+
+bot_obj = bot.to_BS_object({
+    "id": 1,
+    "first_name": "Metabot",
+    "bot_creator": user_obj
+})
+
+print(bot_obj)
