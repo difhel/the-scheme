@@ -187,9 +187,10 @@ byte value: Array<bit>[8] = Byte;
 (<namespace>.)? <method_name>
 ```
 
----
+- **`<namespace>`** - опциональная часть. Например, пространство имен `messages` у метода `messages.send`. Пространства могут быть вложенными.
+- **`<method name>`** - обязательная часть. Имя метода. Например, в методе `auth.phone.verify` название метода - `verify`.
 
-# DEPRECATED INFO BELOW
+
 # Формат схемы
 Схема выглядит примерно таким образом:
 ```
@@ -202,25 +203,54 @@ service_user id: int, special_permissions: vector<Permission> = User;
 users.getUserById id: int = User | null;
 ```
 
-Комбинаторы в блоке `types` описывают конструкторы типов. Типы могут иметь несколько конструкторов, то есть объекты таких типов могут быть объявлены с разным набором параметров. По сути, сигнатуры конструкторов даже могут быть одинаковыми, потому что при реализации конструктора используется его уникальное имя (в примере выше, для типа `User` есть 2 конструктора с уникальными именами - `User.user` и `User.service_user`). При десериализации конструктор, который будет вызван, определяется CRC32 от его сигнатуры.
+Комбинаторы в блоке `types` описывают конструкторы типов. Типы могут иметь несколько конструкторов, то есть объекты таких типов могут быть объявлены с разным набором параметров.
 
-## Синтаксис комбинаторов
-Для комбинаторов в блоке `types`:
-```
-subtype_name param_1: type_1, param_2: type_2 = TypeName;
-```
-Здесь:
-- `subtype_name` - имя конструктора типа `TypeName` (в примере выше в разделе [Десериализация и сериализация](#десериализация-и-сериализация) это `ChatMember.user`)
-- параметры описываются через запятую с указанием типа (синтаксис похож на синтаксис указания типов в TypeScript и Python). Значения по умолчанию не допускаются
-- `TypeName` - название определяемого типа
+Комбинаторы в блоке `methods` описывают RPC-методы.
 
+Все комбинаторы должны находиться или в блоке `types`, или в блоке `methods`, при этом допускается как пропуск одного из этих блоков, так и повторное использование (например, сначала идут типы для авторизации, потом методы для авторизации, потом снова типы для сообщений, потом методы для сообщений и так далее).
 
-Для комбинаторов в блоке `methods`:
+## Полный синтаксис схемы
+### Синтаксис комбинаторов-конструкторов
 ```
-rpc_function_name param_1: type_1, param_2: type_2 = ResultType;
+<combinator_name> <generics>? <dependencies>? <args>? = (<namespace>::)? <type_name> <generics>? <dependencies>?;
 ```
 
-Здесь:
-- `rpc_function_name` - название функции (метода) (в примере выше в разделе [Десериализация и сериализация](#десериализация-и-сериализация) это `messages.getChatMembers`)
-- параметры описываются через запятую с указанием типа (синтаксис похож на синтаксис указания типов в TypeScript и Python). Значения по умолчанию не допускаются
-- `ResultType` - тип возвращаемого значения
+- **`<combinator_name>`** - имя комбинатора
+- **`<generics>`** - (опционально) - зависимые типы для generic-типов в угловых скобках
+- **`<dependencies>`** - (опционально) - зависимые значения для dependant-типов в квадратных скобках
+- **`<args>?`** - (опционально) - аргументы в формате `argName: argType` через запятую
+- **`<namespace>`** - (опционально) - пространство имен для типа
+- **`<type_name>`** - имя типа (стоит писать с большой буквы)
+
+
+### Синтаксис комбинаторов-методов
+```
+(<namespace>.)? <method_name> <args>? = <type>;
+```
+
+- **`<namespace>`** - (опционально) - пространство имен для метода
+- **`<method_name>`** - имя метода (стоит писать с маленькой буквы)
+- **`<args>?`** - (опционально) - аргументы в формате `argName: argType` через запятую
+- **`<type>`** - возвращаемое значение
+
+### Примеры
+```
+---types---
+// Base examples
+user id: int, name: string = User; // fully-defined form is `User.user`
+bot id: int, owner: User.user = User; // fully-defined form is `User.bot`
+
+// Namespaces
+user id: int, name: string, is_premium: bool = external.Telegram::User; // another `User` type, but in the other namespace
+user id: int, name: string = external.VK::User; // wait... another user?!
+
+// Dimensions: let's create a 3x5 matrix!
+anil {T} = Array<T>[0];
+acons {T} [n: #] head: T, tail: Array<T>[n] = Array<T>[next(n)];
+
+matrix_3x5 value: Array<Array<int>[3]>[5] = Matrix_3x5;
+
+---methods---
+users.getByIds ids: vector<int> = vector<User>;
+messages.getChatMembers id: int = vector<User> | null;
+```
